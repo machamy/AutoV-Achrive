@@ -44,6 +44,7 @@ class Screen(threading.Thread):
                 continue
 
     async def test(self):
+
         self._idx += 1
         tmp = 'open'
         filename = f"test{tmp}.jpg"
@@ -54,7 +55,9 @@ class Screen(threading.Thread):
         cv2.imwrite('resultimg.png', img)
 
         result = await (winocr.recognize_cv2(img, 'Ko'))
-        self.debug_draw_wd(ocr_result=result,result_img=original_img)
+        #self.debug_draw_wd(ocr_result=result,result_img=original_img) # 컬러로 보이기
+        self.debug_draw_wd(ocr_result=result, result_img=cv2.cvtColor((grey),cv2.COLOR_GRAY2BGR)) # 회색으로 보이기
+        self.debug_draw_wd(ocr_result=result, result_img=cv2.cvtColor((img), cv2.COLOR_GRAY2BGR))  # 흑백으로 보이기
         # pprint({
         #     'text_angle': result.text_angle,
         #     'text': result.text,

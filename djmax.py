@@ -6,7 +6,7 @@ import threading, time
 import winocr
 import asyncio
 import keyboard
-from PIL import ImageFont, ImageGrab, Image
+from PIL import ImageFont, ImageDraw, Image
 from pprint import pprint
 
 
@@ -94,19 +94,24 @@ class Screen(threading.Thread):
         return res, grey_img
 
     def debug_draw_wd(self, ocr_result, result_img):
+        font = ImageFont.truetype('NanumGothicBold.ttf', 20)
+        img_pil = Image.fromarray(result_img)
+        draw = ImageDraw.Draw(img_pil)
         for line in ocr_result.lines:
             for word in line.words:
                 rect = word.bounding_rect
-                cv2.rectangle(result_img,
-                              list(map(int,(rect.x, rect.y, rect.width, rect.height))),
-                              (0, 255, 0), 1)
-        cv2.imshow("result_wd", result_img)
+                draw.rectangle(list(map(int,(rect.x, rect.y, rect.x+rect.width, rect.y+rect.height))),
+                              outline = (0, 255, 0), width=1)
+                draw.text((rect.x,rect.y+20),word.text,font=font,fill=(0,255,0))
+        result = np.array(img_pil)
+        cv2.imshow("result_wd", result)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
     def debug_draw_ct(self, img, result_img):
         contours, hierarchy = cv2.findContours(img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         res = result_img
+
         for cnt in contours:
             cv2.drawContours(res, [cnt], 0, (255, 0, 0), 3)
         cv2.imshow("result", res)

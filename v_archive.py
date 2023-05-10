@@ -14,6 +14,9 @@ print(f"{BOARD_LIST=}")
 class User:
     """
     V-ARCHIVE 상에 저장된 USER
+    :var name: 유저의 ID
+    :var token: 유저의 token(account.txt)
+    :var floors: 유저의 저장된 floors
     """
     def __init__(self, name, userNo = 0,token=None):
         """
@@ -26,6 +29,12 @@ class User:
         floors = []
 
     def refresh(self, button, board):
+        """
+        미구현
+        :param button: 
+        :param board: 
+        :return: 
+        """
         print(f"refesh {self.name}:{button}, {board}")
         obj = get(self.name, button, board)
         if not obj["success"]:

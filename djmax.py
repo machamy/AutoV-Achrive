@@ -5,7 +5,10 @@ import pyautogui
 import threading, time
 import winocr
 import asyncio
+import keyboard
+from PIL import ImageFont, ImageGrab, Image
 from pprint import pprint
+
 
 class CannotFindScreenError(Exception):
     def __init__(self, msg):
@@ -20,41 +23,52 @@ class Screen(threading.Thread):
         self.duration = duration
         self.window_name = window_name
         self.loop = asyncio.get_event_loop()
+        self._idx = 0
         super().__init__()
 
     async def run(self):
         print("Screen Started", start_time := time.time())
-        idx = 0
-        while True:
+        print("Screen Check")
+
+        await self.test()
+
+        while False:
+            if not keyboard.is_pressed('n'):
+                continue
             time.sleep(self.duration)
-            print("Screen Check")
+
             try:
-                shot = self.screenshot()
-                filename = f"img0.jpg"
-                #cv2.imshow(filename,shot)
-                cv2.imwrite(filename,shot)
-                original_img = cv2.imread(filename)
-                img = self.convert_img(original_img)
-                cv2.imwrite('resultimg.png', img)
-
-                result = await (winocr.recognize_cv2(img,'Ko'))
-                pprint({
-                    'text_angle': result.text_angle,
-                    'text': result.text,
-                    'lines': [{
-                        'text': line.text,
-                        'words': [{
-                            'bounding_rect': {'x': word.bounding_rect.x, 'y': word.bounding_rect.y,
-                                              'width': word.bounding_rect.width, 'height': word.bounding_rect.height},
-                            'text': word.text
-                        } for word in line.words]
-                    } for line in result.lines]
-                })
-
-                idx += 1
+                self.test()
             except CannotFindScreenError as e:
                 print(CannotFindScreenError, e)
                 continue
+
+    async def test(self):
+        self._idx += 1
+        tmp = 'open'
+        filename = f"test{tmp}.jpg"
+        original_img = cv2.imread(filename)
+
+        img, grey = self.convert_img(original_img)
+        #self.debug_draw_ct(grey, grey)
+        cv2.imwrite('resultimg.png', img)
+
+        result = await (winocr.recognize_cv2(img, 'Ko'))
+        self.debug_draw_wd(ocr_result=result,result_img=original_img)
+        # pprint({
+        #     'text_angle': result.text_angle,
+        #     'text': result.text,
+        #     'lines': [{
+        #         'text': line.text,
+        #         'words': [{
+        #             'bounding_rect': {'x': word.bounding_rect.x, 'y': word.bounding_rect.y,
+        #                               'width': word.bounding_rect.width, 'height': word.bounding_rect.height},
+        #             'text': word.text
+        #         } for word in line.words]
+        #     } for line in result.lines]
+        # })
+
+
 
     def screenshot(self):
         hwnd = win32gui.FindWindow(None, self.window_name)
@@ -74,9 +88,30 @@ class Screen(threading.Thread):
                                  dsize=(1920, 1080),
                                  interpolation=(cv2.INTER_AREA if img.shape[0] >= 1080 and
                                                                   img.shape[0] >= 1920 else cv2.INTER_LINEAR))
-        croped_img = resized_img[:, 10:]
-        grey_img = cv2.cvtColor(croped_img, cv2.COLOR_BGR2GRAY)
-        thresh,res = cv2.threshold(grey_img,198,255,cv2.THRESH_BINARY)
+        cropped_img = resized_img[:, :]
+        grey_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
+        thresh, res = cv2.threshold(grey_img, 198, 255, cv2.THRESH_BINARY)
+        return res, grey_img
+
+    def debug_draw_wd(self, ocr_result, result_img):
+        for line in ocr_result.lines:
+            for word in line.words:
+                rect = word.bounding_rect
+                cv2.rectangle(result_img,
+                              list(map(int,(rect.x, rect.y, rect.width, rect.height))),
+                              (0, 255, 0), 1)
+        cv2.imshow("result_wd", result_img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    def debug_draw_ct(self, img, result_img):
+        contours, hierarchy = cv2.findContours(img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        res = result_img
+        for cnt in contours:
+            cv2.drawContours(res, [cnt], 0, (255, 0, 0), 3)
+        cv2.imshow("result", res)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
         return res
 
     def start(self):
@@ -84,3 +119,4 @@ class Screen(threading.Thread):
 
     def end(self):
         self.loop.close()
+        print("Screen end")
